@@ -1,0 +1,129 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Générateur de fiches produits</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --card: #ffffff;
+    --text: #18181b;
+    --muted: #71717a;
+    --accent: #18181b;
+    --border: #e4e4e7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  p.sub { color: var(--muted); margin-top: 0; margin-bottom: 28px; }
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+  }
+  button {
+    margin-top: 14px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .result {
+    margin-top: 28px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: none;
+  }
+  .result h2 { margin-top: 0; font-size: 1.1rem; }
+  .result .titre { font-weight: 600; margin-bottom: 10px; }
+  .result .desc { line-height: 1.5; margin-bottom: 14px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { background: var(--bg); border: 1px solid var(--border); padding: 4px 10px; border-radius: 999px; font-size: 0.85rem; }
+  .error { color: #b91c1c; margin-top: 12px; display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Générateur de fiches produits</h1>
+  <p class="sub">Colle les caractéristiques brutes de ton produit, récupère une fiche prête à publier.</p>
+
+  <textarea id="input" placeholder="Ex : sac à main en cuir marron, fait main, 30x20cm, bandoulière ajustable, pour femme, style vintage..."></textarea>
+  <br>
+  <button id="btn">Générer la fiche</button>
+  <div class="error" id="error"></div>
+
+  <div class="result" id="result">
+    <h2>Ta fiche produit</h2>
+    <div class="titre" id="out-titre"></div>
+    <div class="desc" id="out-desc"></div>
+    <div class="tags" id="out-tags"></div>
+  </div>
+</div>
+
+<script>
+const btn = document.getElementById('btn');
+const input = document.getElementById('input');
+const resultBox = document.getElementById('result');
+const errorBox = document.getElementById('error');
+
+btn.addEventListener('click', async () => {
+  const productInfo = input.value.trim();
+  if (!productInfo) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Génération...';
+  errorBox.style.display = 'none';
+  resultBox.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productInfo })
+    });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || 'Erreur inconnue');
+
+    document.getElementById('out-titre').textContent = data.titre;
+    document.getElementById('out-desc').textContent = data.description;
+    const tagsEl = document.getElementById('out-tags');
+    tagsEl.innerHTML = '';
+    (data.motscles || []).forEach(m => {
+      const span = document.createElement('span');
+      span.className = 'tag';
+      span.textContent = m;
+      tagsEl.appendChild(span);
+    });
+    resultBox.style.display = 'block';
+  } catch (err) {
+    errorBox.textContent = err.message;
+    errorBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Générer la fiche';
+  }
+});
+</script>
+</body>
+</html>
